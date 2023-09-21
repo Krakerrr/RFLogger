@@ -2,8 +2,8 @@
 #define DIALOG_H
 
 #include <QDialog>
+#include <QDebug>
 #include <QThread>
-
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Dialog; }
@@ -18,10 +18,16 @@ public:
     ~Dialog();
 
 private slots:
-    void on_LogToFile_clicked();
+    void on_m_btn_connect_clicked();
+
+    void on_pushButton_clicked();
 
 public slots:
     void updateGui();
+
+signals:
+    void Connect();
+    void Disconnect();
 
 private:
     Ui::Dialog *ui;

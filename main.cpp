@@ -1,18 +1,27 @@
-#include "dialog.h"
+
 
 #include <QApplication>
-#include "rfreader.h"
+#include <QThread>
+#include <QDebug>
+
+#include "serialcomm.h"
+#include "dialog.h"
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+
+    SerialComm rf;
+    rf.setObjectName("Rf reader");
+
+
+    // app window
     Dialog w;
+    w.setObjectName("Window");
+
+    QObject::connect(&w, &Dialog::Connect, &rf, &SerialComm::openSerialPort);
+    QObject::connect(&w, &Dialog::Disconnect, &rf, &SerialComm::closeSerialPort);
+
     w.show();
-
-    RFreader rf;
-    rf.openSerialPort();
-
-    w.updateGui();
-
     return a.exec();
 }
