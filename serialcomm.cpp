@@ -9,21 +9,16 @@ SerialComm::SerialComm(QObject *parent)
     serialBuffer = "";
     parsed_data = "";
     pSerialPort = new QSerialPort(this);
+    pSerialPort->setPortName("");
+    pSerialPort->setBaudRate(QSerialPort::Baud115200);
+    pSerialPort->setDataBits(QSerialPort::Data8);
+    pSerialPort->setParity(QSerialPort::NoParity);
+    pSerialPort->setStopBits(QSerialPort::OneStop);
+
+
     // slots connection
     connect(pSerialPort, &QSerialPort::readyRead, this, &SerialComm::getSerialData);
     connect(pSerialPort, &QSerialPort::errorOccurred, this, &SerialComm::handleError);
-
-
-    // open file
-    outfile.setFileName("out.txt");
-    if( ! outfile.open(QIODevice::ReadWrite) )
-    {
-        qCritical() << "Could not open file!";
-        qCritical() << outfile.errorString();
-    }else
-    {
-        fFileOpenStatus = true;
-    }
 }
 
 SerialComm::~SerialComm()
@@ -35,7 +30,8 @@ SerialComm::~SerialComm()
     pSerialPort = nullptr;
     delete pSerialPort;
 
-    outfile.close();
+    // close log file
+    openDataFile("",false); // close file
 }
 
 void SerialComm::writeDataToFile(const QByteArray &data)
@@ -45,6 +41,7 @@ void SerialComm::writeDataToFile(const QByteArray &data)
         out << (quint8)data.at(i) << " ";
     }
 }
+
 
 void SerialComm::getSerialData()
 {
@@ -56,20 +53,54 @@ void SerialComm::getSerialData()
     qInfo() << "Time Elapsed:" << timer.nsecsElapsed() / 1e6;
     qInfo() << "Time Elapsed:" << timer.restart();
 
-
-    if(fWriteFile && fFileOpenStatus)
+    if( fFileOpenStatus )
     {
         writeDataToFile(serialData);
     }
 }
 
-bool SerialComm::openSerialPort()
+void SerialComm::getSerialDataTherad()
 {
-    pSerialPort->setPortName(portName);
-    pSerialPort->setBaudRate(QSerialPort::Baud115200);
-    pSerialPort->setDataBits(QSerialPort::Data8);
-    pSerialPort->setParity(QSerialPort::NoParity);
-    pSerialPort->setStopBits(QSerialPort::OneStop);
+    qInfo() << "Running in" << QThread::currentThread();
+    for (int i = 0; i < 10; ++i) {
+        qInfo() << "Doing Stuff in" << QThread::currentThread();
+        QThread::currentThread()->msleep(500);
+    }
+}
+
+bool SerialComm::openDataFile(QString filename, bool Write)
+{
+    if( Write && !fFileOpenStatus)
+    {
+        // open file
+        outfile.setFileName(filename + QString(".txt"));
+        if( ! outfile.open(QIODevice::ReadWrite) )
+        {
+            qCritical() << "Could not open file!";
+            qCritical() << outfile.errorString();
+            return false;
+        }else
+        {
+            fFileOpenStatus = true;
+            return true;
+        }
+    }
+    else if (!Write && fFileOpenStatus) {
+        // close file
+        fFileOpenStatus = false;
+        outfile.flush();
+        outfile.close();
+        return true;
+    }
+    else
+        return false;
+}
+
+
+bool SerialComm::openSerialPort(QString ComPort)
+{
+    qInfo() << "Recieved port name" << ComPort;
+    pSerialPort->setPortName(ComPort);
     if (pSerialPort->open(QIODevice::ReadWrite)) {
         qInfo()<< "Opened serial port" <<pSerialPort->isOpen();
         fConnectionStatus = true;
@@ -82,6 +113,7 @@ bool SerialComm::openSerialPort()
     }
 }
 
+
 void SerialComm::closeSerialPort()
 {
     if (pSerialPort->isOpen())
@@ -92,10 +124,12 @@ void SerialComm::closeSerialPort()
     }
 }
 
+
 void SerialComm::handleError(QSerialPort::SerialPortError error)
 {
     if (error == QSerialPort::ResourceError) {
         qInfo() << "Critical Error" << pSerialPort->errorString();
         closeSerialPort();
+        emit ConnectionError(pSerialPort->errorString());
     }
 }

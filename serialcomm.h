@@ -4,11 +4,13 @@
 #include <QObject>
 #include <QSerialPort>
 #include <QThread>
-#include <QDebug>
 #include <QElapsedTimer>
 #include <stdint.h>
 #include <QFile>
 #include <QTextStream>
+
+#include <QDebug>
+
 
 class SerialComm : public QObject
 {
@@ -22,23 +24,27 @@ public:
 
 private:
     QSerialPort* pSerialPort;
-    const QString portName = "COM4";
+    const QString portName = "COM3";
     QByteArray serialData;
     QByteArray serialBuffer;
     QString parsed_data;
     QElapsedTimer timer;
-    bool fWriteFile = true;
     QFile outfile;
     void writeDataToFile(const QByteArray &data);
+    bool closeDataFile(void);
 
 public slots:
     void getSerialData();
-    bool openSerialPort();
+    void getSerialDataTherad();
+    bool openDataFile(QString filename, bool Write);
+    bool openSerialPort(QString ComPort);
     void closeSerialPort();
     void handleError(QSerialPort::SerialPortError error);
 
+
 signals:
-     void dataready();
+    void dataready();
+    void ConnectionError(QString errormsg);
 };
 
 #endif // SERIALCOMM_H
