@@ -17,12 +17,14 @@ int main(int argc, char *argv[])
 
     // app window
     Dialog w;
+    w.setWindowTitle("RF Reader");
     w.setObjectName("Window");
+//    w.setFixedSize(50 ,50);
 
     QObject::connect(&w, &Dialog::Connect, &serial, &SerialComm::openSerialPort);
     QObject::connect(&w, &Dialog::Disconnect, &serial, &SerialComm::closeSerialPort);
     QObject::connect(&w, &Dialog::WriteToText, &serial, &SerialComm::openDataFile);
-
+    QObject::connect(&serial, &SerialComm::ConnectionError, &w, &Dialog::connectionLost);
 
 
     w.show();

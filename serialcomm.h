@@ -8,30 +8,35 @@
 #include <stdint.h>
 #include <QFile>
 #include <QTextStream>
-
 #include <QDebug>
+#include "Rfstruct.h"
+#include "ringbuffer.h"
 
 
 class SerialComm : public QObject
 {
     Q_OBJECT
+
+
 public:
     explicit SerialComm(QObject *parent = nullptr);
     ~SerialComm();
     bool fDataReady = false;
     bool fConnectionStatus = false;
     bool fFileOpenStatus = false;
+    RingBuffer ringbuffer;
+    struct RFData sRF;
+    uint32_t recievedDataCounter = 0;
+    uint32_t CRCnotOKCounter = 0;
 
 private:
     QSerialPort* pSerialPort;
-    const QString portName = "COM3";
     QByteArray serialData;
-    QByteArray serialBuffer;
-    QString parsed_data;
     QElapsedTimer timer;
     QFile outfile;
     void writeDataToFile(const QByteArray &data);
     bool closeDataFile(void);
+    void parseData(void);
 
 public slots:
     void getSerialData();

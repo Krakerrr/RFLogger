@@ -45,6 +45,11 @@ void Dialog::updateGui()
 void Dialog::connectionLost(QString errormsg)
 {
     updateConnectStatus(ERROR);
+    if( emit WriteToText("", false) )
+    {
+        updateLogStatus(NOTOK);
+    }else
+        updateLogStatus(ERROR);
 }
 
 
@@ -83,6 +88,7 @@ void Dialog::updateConnectStatus(Status status)
         ui->RefreshSerialBtn->setEnabled(true);
         ui->m_StatusLabel->setText("No Connection");
         ui->m_StatusLabel->setPalette(m_StatusLabelNoConnectPalet);
+        scanSerialPorts();
     }else if(status == ERROR)
     {
         ui->m_btn_connect->setText("Connect");
@@ -90,6 +96,7 @@ void Dialog::updateConnectStatus(Status status)
         ui->RefreshSerialBtn->setEnabled(true);
         ui->m_StatusLabel->setText("ERROR");
         ui->m_StatusLabel->setPalette(m_StatusLabelErrorPalet);
+        scanSerialPorts();
     }
 }
 

@@ -6,8 +6,6 @@ SerialComm::SerialComm(QObject *parent)
     qInfo() << this << "Constructed" << QThread::currentThread();
 
     // inits
-    serialBuffer = "";
-    parsed_data = "";
     pSerialPort = new QSerialPort(this);
     pSerialPort->setPortName("");
     pSerialPort->setBaudRate(QSerialPort::Baud115200);
@@ -42,22 +40,64 @@ void SerialComm::writeDataToFile(const QByteArray &data)
     }
 }
 
+void SerialComm::parseData(void)
+{
+    while(ringbuffer.GetAvailabeData() > 60*2)
+    {
+        uint8_t header, length;
+        length = ringbuffer.Recieve();
+        header = ringbuffer.Recieve();
+        if( length == 60 && header == 96)
+        {
+            uint16_t CRCcalc, CRCrecv;
+            CRCcalc   = 60 + 96;
+            uint8_t rawData[58] = {0};
+            for (int iter = 0; iter < 56; ++iter) {
+                rawData[iter] =ringbuffer.Recieve();
+                CRCcalc +=rawData[iter];
+            }
+            CRCrecv = ((uint16_t) ringbuffer.Recieve() ) | ((uint16_t) ringbuffer.Recieve() << 8);
+            if(CRCcalc == CRCrecv)
+            {
+                memcpy(&sRF,rawData,RFPayloadSize);
+                recievedDataCounter++;
+                qInfo() << "FCC CLOCK = " << sRF.FCC_Clock;
+                qWarning()<< "------CRC OK----";
+            }
+            else
+            {
+                qWarning()<< "----CRC NOT OK----";
+                ringbuffer.MoveReadIndex(-58 - 1);
+                CRCnotOKCounter++;
+            }
+        }else{
+            ringbuffer.MoveReadIndex(-1);
+        }
+    }
+}
+
 
 void SerialComm::getSerialData()
 {
     qInfo() << "Reading data" << QThread::currentThread();
     qInfo() << "Bytes available" << pSerialPort->bytesAvailable();
     serialData = pSerialPort->readAll();
-    serialBuffer = serialBuffer + serialData.toHex(' ');
+    for (int i = 0; i < serialData.size(); ++i) {
+        ringbuffer.Insert((uint8_t) serialData.at(i));
+    }
 
-    qInfo() << "Time Elapsed:" << timer.nsecsElapsed() / 1e6;
+    qInfo() << "Time Elapsed:" << (float)timer.nsecsElapsed() / 1e6;
     qInfo() << "Time Elapsed:" << timer.restart();
+    qInfo() << "Bytes available" << pSerialPort->bytesAvailable();
+
+    parseData();
 
     if( fFileOpenStatus )
     {
         writeDataToFile(serialData);
     }
 }
+
 
 void SerialComm::getSerialDataTherad()
 {
@@ -67,6 +107,7 @@ void SerialComm::getSerialDataTherad()
         QThread::currentThread()->msleep(500);
     }
 }
+
 
 bool SerialComm::openDataFile(QString filename, bool Write)
 {
