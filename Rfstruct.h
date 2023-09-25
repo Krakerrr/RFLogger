@@ -1,9 +1,20 @@
 #ifndef RFSTRUCT_H
 #define RFSTRUCT_H
 
+#include <QMetaType>
 #include <stdint.h>
 
-#define RFPayloadSize 56
+#define RFPAYLOADSIZE   56
+#define RFDATASIZE      60
+#define RFHEADER        96
+#define RFLENGTH        60
+
+struct RFCounter
+{
+    uint32_t recievedPacketCounter = 0;
+    uint16_t recievedPacketFreq;
+    uint32_t CRCnotOKCounter = 0;
+};
 
 struct __attribute__((__packed__)) RFData
 {
@@ -21,6 +32,8 @@ struct __attribute__((__packed__)) RFData
     float       CMD_da;
     float       CMD_dr;
     uint8_t     Rezerve[7];
+    struct RFCounter Counter;
 };
+Q_DECLARE_METATYPE(RFData);
 
 #endif // RFSTRUCT_H

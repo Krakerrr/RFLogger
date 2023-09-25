@@ -26,15 +26,15 @@ public:
     bool fFileOpenStatus = false;
     RingBuffer ringbuffer;
     struct RFData sRF;
-    uint32_t recievedDataCounter = 0;
-    uint32_t CRCnotOKCounter = 0;
 
 private:
     QSerialPort* pSerialPort;
     QByteArray serialData;
     QElapsedTimer timer;
-    QFile outfile;
+    QFile outFileRaw;
+    QFile outFileParsed;
     void writeDataToFile(const QByteArray &data);
+    void writeDataToFile(const struct RFData& RF);
     bool closeDataFile(void);
     void parseData(void);
 
@@ -48,7 +48,7 @@ public slots:
 
 
 signals:
-    void dataready();
+    void dataready(const struct RFData& RF);
     void ConnectionError(QString errormsg);
 };
 

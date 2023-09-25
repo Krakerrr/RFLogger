@@ -6,6 +6,7 @@
 #include <QThread>
 #include <QSerialPortInfo>
 #include <QMessageBox>
+#include "Rfstruct.h"
 
 enum Status { OK=0,NOTOK, ERROR};
 
@@ -29,7 +30,7 @@ private slots:
     void on_LogBtn_clicked();
 
 public slots:
-    void updateGui();
+    void updateGui(const struct RFData& RF);
     void connectionLost(QString errormsg);
 
 signals:

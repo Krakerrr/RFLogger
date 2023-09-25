@@ -8,7 +8,7 @@ Dialog::Dialog(QWidget *parent)
     qInfo() << this << "Constructed" << QThread::currentThread();
     ui->setupUi(this);
 
-    ui->lcdNumber->display("-------");
+    ui->clockDisp->display("-------");
 
 
     m_StatusLabelConnectPalet.setColor(QPalette::Window, Qt::white);
@@ -37,9 +37,11 @@ Dialog::~Dialog()
 
 
 // SLOTS
-void Dialog::updateGui()
+void Dialog::updateGui(const struct RFData& RF)
 {
-
+    qInfo() << this << RF.FCC_Clock;
+    uint32_t FCC_ClockSec = RF.FCC_Clock / 1000;
+    ui->clockDisp->display(QString::number(FCC_ClockSec));
 }
 
 void Dialog::connectionLost(QString errormsg)

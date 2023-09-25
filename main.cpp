@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     QObject::connect(&w, &Dialog::Disconnect, &serial, &SerialComm::closeSerialPort);
     QObject::connect(&w, &Dialog::WriteToText, &serial, &SerialComm::openDataFile);
     QObject::connect(&serial, &SerialComm::ConnectionError, &w, &Dialog::connectionLost);
-
+    QObject::connect(&serial, &SerialComm::dataready, &w, &Dialog::updateGui);
 
     w.show();
     return a.exec();

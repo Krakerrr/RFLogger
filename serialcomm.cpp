@@ -13,7 +13,6 @@ SerialComm::SerialComm(QObject *parent)
     pSerialPort->setParity(QSerialPort::NoParity);
     pSerialPort->setStopBits(QSerialPort::OneStop);
 
-
     // slots connection
     connect(pSerialPort, &QSerialPort::readyRead, this, &SerialComm::getSerialData);
     connect(pSerialPort, &QSerialPort::errorOccurred, this, &SerialComm::handleError);
@@ -34,41 +33,62 @@ SerialComm::~SerialComm()
 
 void SerialComm::writeDataToFile(const QByteArray &data)
 {
-    QTextStream out(&outfile);
+    QTextStream out(&outFileRaw);
     for (int i = 0; i < data.size(); ++i) {
         out << (quint8)data.at(i) << " ";
     }
 }
 
+void SerialComm::writeDataToFile(const RFData &RF)
+{
+    QTextStream out(&outFileParsed);
+    out <<  sRF.FCC_Clock << " ";
+    out <<  sRF.IMU_freq_status << " ";
+    out <<  sRF.IMU_acc_x << " ";
+    out <<  sRF.IMU_acc_y << " ";
+    out <<  sRF.IMU_acc_z << " ";
+    out <<  sRF.IMU_gyro_x << " ";
+    out <<  sRF.IMU_gyro_y << " ";
+    out <<  sRF.IMU_gyro_z << " ";
+    out <<  sRF.IMU_temp << " ";
+    out <<  sRF.CMD_throttle << " ";
+    out <<  sRF.CMD_de << " ";
+    out <<  sRF.CMD_da << " ";
+    out <<  sRF.CMD_dr << " ";
+    out <<  "\n";
+}
+
 void SerialComm::parseData(void)
 {
-    while(ringbuffer.GetAvailabeData() > 60*2)
+    while(ringbuffer.GetAvailabeData() > RFDATASIZE*2)
     {
         uint8_t header, length;
         length = ringbuffer.Recieve();
         header = ringbuffer.Recieve();
-        if( length == 60 && header == 96)
+        if( length == RFLENGTH && header == RFHEADER)
         {
             uint16_t CRCcalc, CRCrecv;
-            CRCcalc   = 60 + 96;
-            uint8_t rawData[58] = {0};
-            for (int iter = 0; iter < 56; ++iter) {
+            uint8_t rawData[RFPAYLOADSIZE] = {0};
+            CRCcalc   = RFHEADER + RFLENGTH;
+            for (int iter = 0; iter < RFPAYLOADSIZE; ++iter) {
                 rawData[iter] =ringbuffer.Recieve();
                 CRCcalc +=rawData[iter];
             }
             CRCrecv = ((uint16_t) ringbuffer.Recieve() ) | ((uint16_t) ringbuffer.Recieve() << 8);
             if(CRCcalc == CRCrecv)
             {
-                memcpy(&sRF,rawData,RFPayloadSize);
-                recievedDataCounter++;
+                memcpy(&sRF,rawData,RFPAYLOADSIZE);
+                sRF.Counter.recievedPacketCounter++;
                 qInfo() << "FCC CLOCK = " << sRF.FCC_Clock;
-                qWarning()<< "------CRC OK----";
+                qInfo()<< "------CRC OK----";
+                writeDataToFile(sRF);
+                emit dataready(sRF);
             }
             else
             {
                 qWarning()<< "----CRC NOT OK----";
-                ringbuffer.MoveReadIndex(-58 - 1);
-                CRCnotOKCounter++;
+                ringbuffer.MoveReadIndex(-RFPAYLOADSIZE -2 - 1);
+                sRF.Counter.CRCnotOKCounter++;
             }
         }else{
             ringbuffer.MoveReadIndex(-1);
@@ -81,6 +101,7 @@ void SerialComm::getSerialData()
 {
     qInfo() << "Reading data" << QThread::currentThread();
     qInfo() << "Bytes available" << pSerialPort->bytesAvailable();
+
     serialData = pSerialPort->readAll();
     for (int i = 0; i < serialData.size(); ++i) {
         ringbuffer.Insert((uint8_t) serialData.at(i));
@@ -114,23 +135,27 @@ bool SerialComm::openDataFile(QString filename, bool Write)
     if( Write && !fFileOpenStatus)
     {
         // open file
-        outfile.setFileName(filename + QString(".txt"));
-        if( ! outfile.open(QIODevice::ReadWrite) )
+        outFileRaw.setFileName(filename + QString(".txt"));
+        outFileParsed.setFileName(filename + QString("_Parsed.txt"));
+        bool fileRawStatus = outFileRaw.open(QIODevice::ReadWrite);
+        bool fileParsedStatus = outFileParsed.open(QIODevice::ReadWrite);
+        if( !fileRawStatus && !fileParsedStatus )
         {
             qCritical() << "Could not open file!";
-            qCritical() << outfile.errorString();
+            qCritical() << outFileRaw.errorString();
+            qCritical() << outFileParsed.errorString();
             return false;
-        }else
-        {
-            fFileOpenStatus = true;
-            return true;
         }
+        fFileOpenStatus = true;
+        return true;
     }
     else if (!Write && fFileOpenStatus) {
         // close file
         fFileOpenStatus = false;
-        outfile.flush();
-        outfile.close();
+        outFileRaw.flush();
+        outFileRaw.close();
+        outFileParsed.flush();
+        outFileParsed.close();
         return true;
     }
     else
